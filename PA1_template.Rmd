@@ -1,17 +1,45 @@
 # Reproducible Research: Peer Assessment 1
 
-
 ## Loading and preprocessing the data
 
-
+```{r}
+df <- read.csv(file = "activity.csv", na.strings = "NA")                 
+df <- df[complete.cases(df),]
+df$date <- as.Date(df$date)
+```
 
 ## What is mean total number of steps taken per day?
+```{r, fig.height=4, fig.width=4}
+# create histogram of total steps taken per day
+sumStepsPerDay <- aggregate(x=df$steps, by=list(df$date), FUN=sum)
+colnames(sumStepsPerDay) <- c("date","steps")
+hist(sumStepsPerDay$steps, 
+     main = "Distribution of total steps taken/day",     
+     xlab = "Total # of Steps taken", 
+     ylab = "# of Days")
+```
 
+```{r}
+totalDay <- nrow(sumStepsPerDay)
+meanStepsPerDay = round(sum(df$steps)/totalDay,0)
+medianStepsPerDay = median(sumStepsPerDay$steps)
+```
+Mean steps per day: `r as.integer(meanStepsPerDay)`  
+Median steps per day: `r medianStepsPerDay`
 
+## Average daily activity pattern
+```{r, fig.height=4, fig.width=4}
+meanStepsPerInterval <- aggregate(x=df$steps, by=list(df$interval), FUN=mean)
+colnames(meanStepsPerInterval) <- c("interval","steps")
+meanStepsPerInterval <- meanStepsPerInterval[order(meanStepsPerInterval$interval),]
 
-## What is the average daily activity pattern?
-
-
+plot(meanStepsPerInterval$interval,     
+     meanStepsPerInterval$steps,     
+     type="l",
+     main = "Average steps per interval",     
+     xlab = "Interval", 
+     ylab = "Average Steps")
+```
 
 ## Imputing missing values
 
