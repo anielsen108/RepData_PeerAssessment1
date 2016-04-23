@@ -2,47 +2,94 @@
 
 ## Loading and preprocessing the data
 
-```{r}
-df <- read.csv(file = "activity.csv", na.strings = "NA")                 
-df <- df[complete.cases(df),]
-df$date <- as.Date(df$date)
+```{r echo=TRUE}
+activity <- read.csv(file = "activity.csv", na.strings = "NA")
+activityCompleteCases <- activity[complete.cases(activity),]
+activity$date <- as.Date(activity$date)
 ```
 
 ## What is mean total number of steps taken per day?
-```{r, fig.height=4, fig.width=4}
-# create histogram of total steps taken per day
-sumStepsPerDay <- aggregate(x=df$steps, by=list(df$date), FUN=sum)
-colnames(sumStepsPerDay) <- c("date","steps")
-hist(sumStepsPerDay$steps, 
-     main = "Distribution of total steps taken/day",     
+
+```{r, echo=TRUE, fig.height=4, fig.width=4}
+# Calculate total number of steps per day
+stepsPerDay <- aggregate(steps ~ date, activityCompleteCases, sum)
+# Create histogram of total nummber of steps per day
+hist(stepsPerDay$steps, 
+     main="Distribution of total steps taken/day", 
      xlab = "Total # of Steps taken", 
      ylab = "# of Days")
+meanStepsPerDay <- round(mean(stepsPerDay$steps), 0)
+medianStepsPerDay <- round(median(stepsPerDay$steps) ,0)
 ```
 
-```{r}
-totalDay <- nrow(sumStepsPerDay)
-meanStepsPerDay = round(sum(df$steps)/totalDay,0)
-medianStepsPerDay = median(sumStepsPerDay$steps)
-```
-Mean steps per day: `r as.integer(meanStepsPerDay)`  
-Median steps per day: `r medianStepsPerDay`
+* Mean steps per day: `r as.integer(meanStepsPerDay) `
+* Median steps per day: `r as.integer(medianStepsPerDay) `
 
 ## Average daily activity pattern
-```{r, fig.height=4, fig.width=4}
-meanStepsPerInterval <- aggregate(x=df$steps, by=list(df$interval), FUN=mean)
-colnames(meanStepsPerInterval) <- c("interval","steps")
-meanStepsPerInterval <- meanStepsPerInterval[order(meanStepsPerInterval$interval),]
-
-plot(meanStepsPerInterval$interval,     
-     meanStepsPerInterval$steps,     
-     type="l",
-     main = "Average steps per interval",     
-     xlab = "Interval", 
+```{r, echo=TRUE, fig.height=4, fig.width=4}
+# Average number of steps by 5-minute interval
+avgStepsPerInterval = aggregate(steps ~ interval, activityCompleteCases, mean)
+# Time-series plot of average number of steps by 5-minute interval
+plot(avgStepsPerInterval$interval, avgStepsPerInterval$steps, type = "l", 
+     main = "Average steps per interval",
+     xlab = "Interval",
      ylab = "Average Steps")
+intervalWithMostSteps <- avgStepsPerInterval[avgStepsPerInterval$steps == max(avgStepsPerInterval$steps),]$interval
 ```
+The 5-minute interval that, on average, contains the maximum number of steps is interval `r intervalWithMostSteps `.
 
 ## Imputing missing values
 
+```{r, echo=TRUE, fig.height=4, fig.width=4}
+# Number of incomplete cases
+countIncompleteCases <- sum(!complete.cases(activity))
+# Fill missing values with mean for given 5-minute interval
+activityImputed <- merge(activity, avgStepsPerInterval, by = "interval")
+colnames(activityImputed) <- c("interval", "steps", "date", "imputedSteps")
+activityImputed$steps[is.na(activityImputed$steps)] <- activityImputed$imputedSteps[is.na(activityImputed$steps)]
+activityImputed <- activityImputed[order(activityImputed$date, activityImputed$interval),]
 
+# Calculate total number of steps per day
+imputedStepsPerDay <- aggregate(steps ~ date, activityImputed, sum)
+
+# Create histogram of imputed total nummber of steps per day
+hist(imputedStepsPerDay$steps, 
+     main="Imputed Mean Steps Per Day", 
+     xlab = "Average Steps", 
+     ylab = "# of Days")
+# Calculate and report mean and median
+meanStepsPerDayImputed <- round(mean(imputedStepsPerDay$steps), 0)
+medianStepsPerDayImputed <- round(median(imputedStepsPerDay$steps), 0)
+```
+* Imputed mean steps per day: `r as.integer(meanStepsPerDayImputed) `
+* Imputed median steps per day: `r as.integer(medianStepsPerDayImputed) `
 
 ## Are there differences in activity patterns between weekdays and weekends?
+```{r, echo=TRUE, fig.height=8, fig.width=4}
+activityImputed$partOfWeek <- factor (
+  ifelse(is.element(weekdays(activityImputed$date), c("Saturday", "Sunday")),
+         "weekend", "weekday"))
+
+# Average number of steps by 5-minute interval, for weekdays and weekends
+imputedAvgStepsPerIntervalWeekday = aggregate(steps ~ interval, activityImputed[activityImputed$partOfWeek == "weekday",], mean)
+imputedAvgStepsPerIntervalWeekend = aggregate(steps ~ interval, activityImputed[activityImputed$partOfWeek == "weekend",], mean)
+
+# Create panel plot by weekday vs. weekend
+par(mfrow=c(2,1))
+
+# Time-series plot of average number of steps by 5-minute interval, weekend
+plot(imputedAvgStepsPerIntervalWeekend$interval, 
+     imputedAvgStepsPerIntervalWeekend$steps, 
+     type = "l", 
+     main = "Weekend",
+     xlab = "5-minute interval",
+     ylab = "Average # of steps")
+
+# Time-series plot of average number of steps by 5-minute interval, weekday
+plot(imputedAvgStepsPerIntervalWeekday$interval, 
+     imputedAvgStepsPerIntervalWeekday$steps, 
+     type = "l", 
+     main = "Weekday",
+     xlab = "5-minute interval",
+     ylab = "Average # of steps")
+```
